@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Alembic — no ignorar versions/, solo el cache
+apps/api/alembic/__pycache__/
+
+# Playwright
+apps/web/playwright-report/
+apps/web/test-results/
+
+# Turbo / nx cache (si se agrega en el futuro)
+.turbo/
