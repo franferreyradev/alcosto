@@ -1,48 +1,44 @@
-## HANDOFF — 2026-04-30 — T3 Tipos compartidos en packages/shared
+## HANDOFF — 2026-05-01 — T4 Conexión a PostgreSQL y repositorios base
 
 ### Tarea completada
-- ID y nombre: T3 — Tipos compartidos en packages/shared
+- ID y nombre: T4 — Conexión a PostgreSQL y repositorios base
 - Archivos creados/modificados:
-  - `packages/shared/src/enums/order-status.ts` → enum OrderStatus (4 valores: pending, confirmed, dispatched, cancelled)
-  - `packages/shared/src/enums/admin-role.ts` → enum AdminRole (2 valores: admin, staff)
-  - `packages/shared/src/enums/index.ts` → barrel de enums
-  - `packages/shared/src/entities/category.ts` → interface Category
-  - `packages/shared/src/entities/product.ts` → interfaces Product, ProductWithCategory
-  - `packages/shared/src/entities/customer.ts` → interface Customer
-  - `packages/shared/src/entities/order-item.ts` → interfaces OrderItem, OrderItemWithProduct
-  - `packages/shared/src/entities/order.ts` → interfaces Order, OrderDetail
-  - `packages/shared/src/entities/admin-user.ts` → interface AdminUser (sin password_hash)
-  - `packages/shared/src/entities/index.ts` → barrel de entidades
-  - `packages/shared/src/contracts/pagination.ts` → PaginationMeta, PaginatedResponse<T>
-  - `packages/shared/src/contracts/product-contracts.ts` → Create/Update/Status requests, ProductListResponse
-  - `packages/shared/src/contracts/order-contracts.ts` → CreateOrderRequest, UpdateOrderStatusRequest, OrderListResponse
-  - `packages/shared/src/contracts/customer-contracts.ts` → CreateCustomerRequest
-  - `packages/shared/src/contracts/auth-contracts.ts` → Login/Refresh request/response
-  - `packages/shared/src/contracts/error-contracts.ts` → ApiErrorResponse
-  - `packages/shared/src/contracts/index.ts` → barrel de contratos
-  - `packages/shared/src/index.ts` → barrel principal (modificado — reemplazó export {})
-- Criterio de done verificado: sí
+  - `apps/api/app/config.py` → agregado campo `DEBUG: bool = False`
+  - `apps/api/app/database.py` → engine async, AsyncSessionLocal, get_db
+  - `apps/api/app/models/base.py` → Base (DeclarativeBase 2.0), TimestampMixin, CreatedAtMixin
+  - `apps/api/app/models/category.py` → ORM tabla categories (sin timestamps)
+  - `apps/api/app/models/product.py` → ORM tabla products (code manual, soft delete)
+  - `apps/api/app/models/customer.py` → ORM tabla customers (solo created_at)
+  - `apps/api/app/models/order.py` → ORM tabla orders (OrderStatus enum, total_amount inmutable)
+  - `apps/api/app/models/order_item.py` → ORM tabla order_items (unit_price inmutable por trigger)
+  - `apps/api/app/models/admin_user.py` → ORM tabla admin_users (AdminRole enum, solo created_at)
+  - `apps/api/app/models/__init__.py` → barrel de todos los modelos
+  - `apps/api/app/repositories/product_repo.py` → ProductRepo CRUD sin lógica de negocio
+  - `apps/api/app/repositories/order_repo.py` → OrderRepo con selectinload y create atómico
+  - `apps/api/app/repositories/__init__.py` → barrel de repositorios
+  - `apps/api/tests/test_t4_integration.py` → 6 tests de integración con testcontainers
+- Criterio de done verificado: sí ✓
 - Comando de verificación ejecutado y resultado:
-  - `npm run build` en packages/shared → sin errores, emite 18 archivos .d.ts en dist/
-  - `npx tsc --noEmit` en apps/web → sin errores
+  ```
+  pytest tests/test_t4_integration.py -v → 6/6 PASSED
+  npx tsc --noEmit --project apps/web/tsconfig.json → sin errores
+  ```
 
 ### Decisiones locales tomadas
-- Usado `enum` regular (no `const enum`): Next.js usa SWC con `isolatedModules: true`.
-  `const enum` se inlinea en compilación y falla bajo ese flag. Regular enum compila a
-  objeto JS accesible en runtime, compatible con todos los consumers del monorepo.
+- **asyncpg vs psycopg2 — DBAPIError**: asyncpg mapea `RAISE EXCEPTION` de PostgreSQL como `sqlalchemy.exc.DBAPIError`, no como `InternalError` (que es el mapping de psycopg2). El test `test_rn07_trigger_activo_via_orm` usa `DBAPIError` por esta razón.
+- **ENUMs PostgreSQL**: `native_enum=True` + `create_type=False` en todos los SAEnum. `create_type=False` evita que SQLAlchemy intente crear el TYPE (ya existe por Alembic T2).
+- **TimestampMixin vs CreatedAtMixin**: El schema de T2 tiene timestamps asimétricos. `products` y `orders` tienen ambos. `customers` y `admin_users` solo `created_at`. `categories` y `order_items` sin timestamps. Se crearon dos mixins.
+- **docker teardown error**: testcontainers intenta forzar-remover el container al terminar pero el daemon retorna 500. Es cosmético — no afecta tests. Mismo gotcha de T2.
 
 ### Problemas conocidos
-- Ninguno.
+- El `ERROR` al teardown de testcontainers ("permission denied") aparece en cada corrida pero no bloquea ningún test ni CI.
 
 ### Tarea siguiente
-- ID y nombre: T4 — Conexión a PostgreSQL y repositorios base
-- Depende de: T2 ✓ T3 ✓
-- Primer paso concreto: crear `apps/api/app/database.py` con el engine SQLAlchemy 2.0 async
-  usando `create_async_engine` + `asyncpg`, y la session factory `AsyncSessionLocal`.
+- ID y nombre: T5 — Módulo Auth: login con JWT
+- Depende de: T4 ✓
+- Primer paso concreto: crear `apps/api/app/core/security.py` con `hash_password()`, `verify_password()` (passlib bcrypt cost=12), `create_access_token()` y `create_refresh_token()` (python-jose).
 - Archivos a leer primero:
-  - `docs/PLAN.md` Sección 2 (alinear modelos ORM con schema SQL)
-  - `docs/PLAN.md` Sección 4 T4 (criterio de done)
-  - `packages/shared/src/entities/` (los modelos ORM deben coincidir con estos tipos)
-- Nota: T4 es la primera tarea donde los tres artefactos se validan juntos:
-  schema SQL (T2) + tipos TS (T3) + modelos ORM (T4). Cualquier divergencia
-  entre los tres se detecta en el test de integración con testcontainers.
+  - `docs/PLAN.md` Sección 3 (endpoints `/admin/auth/login` y `/admin/auth/refresh`) y Sección 4 T5 (criterio de done con los 3 casos de test)
+  - `docs/PLAN.md` Sección 4 T6 (leerlo junto con T5 antes de arrancar)
+  - `apps/api/app/models/admin_user.py` → el modelo ya tiene `password_hash` y `role`
+- Nota: T5 y T6 van juntos conceptualmente — conviene leer el criterio de done de ambas antes de arrancar T5.
