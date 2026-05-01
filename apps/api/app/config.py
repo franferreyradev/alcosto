@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
     JWT_SECRET: str = ""
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
+    DEBUG: bool = False
     ANALYTICS_ENABLED: bool = False
     R2_ACCESS_KEY: str = ""
     R2_SECRET_KEY: str = ""
