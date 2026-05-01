@@ -24,7 +24,7 @@ alcosto/
 
 ## Setup local
 
-**Requisitos:** Node 20+, Python 3.11+, Docker
+**Requisitos:** Node 20+, Python 3.12+, Docker
 
 ```bash
 # Clonar e instalar dependencias
@@ -33,20 +33,20 @@ cd alcosto
 npm install
 
 # Variables de entorno
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
+cp .env.example apps/api/.env
+cp .env.example apps/web/.env.local
 # Completar los valores en cada .env
 
 # Base de datos local
 docker compose up -d
 
-# Aplicar migraciones
+# Backend
 cd apps/api
-alembic upgrade head
+pip install -e ".[dev]"
+uvicorn app.main:app --reload       # localhost:8000
 
-# Levantar servicios
+# Frontend (en otra terminal)
 npm run dev --workspace=apps/web    # localhost:3000
-uvicorn app.main:app --reload       # localhost:8000 (desde apps/api/)
 ```
 
 ## Scripts principales
