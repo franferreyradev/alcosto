@@ -20,11 +20,11 @@ def db_conn():
     with PostgresContainer(POSTGRES_IMAGE) as postgres:
         host = postgres.get_container_host_ip()
         port = postgres.get_exposed_port(5432)
-        db = postgres.POSTGRES_DB
-        user = postgres.POSTGRES_USER
-        pwd = postgres.POSTGRES_PASSWORD
+        db = postgres.dbname
+        user = postgres.username
+        password = postgres.password
 
-        async_url = f"postgresql+asyncpg://{user}:{pwd}@{host}:{port}/{db}"
+        async_url = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}"
         env = {**os.environ, "DATABASE_URL": async_url}
 
         result = subprocess.run(
@@ -38,7 +38,7 @@ def db_conn():
             f"alembic upgrade head falló:\n{result.stdout}\n{result.stderr}"
         )
 
-        sync_url = f"postgresql://{user}:{pwd}@{host}:{port}/{db}"
+        sync_url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
         conn = psycopg2.connect(sync_url)
         conn.autocommit = True
         yield conn
@@ -97,7 +97,7 @@ def test_seis_tablas_existen(db_conn):
     )
     tables = {row[0] for row in cur.fetchall()}
     expected = {"categories", "products", "customers", "orders", "order_items", "admin_users"}
-    assert expected == tables, f"Tablas encontradas: {tables}"
+    assert expected == tables - {"alembic_version"}, f"Tablas encontradas: {tables}"
 
 
 def test_insert_order_items_valido(db_conn, base_data):

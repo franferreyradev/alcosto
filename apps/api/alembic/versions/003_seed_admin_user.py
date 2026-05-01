@@ -18,7 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    password = secrets.token_urlsafe(16)
+    password = secrets.token_urlsafe(12)
     password_hash = bcrypt.using(rounds=12).hash(password)
 
     print("=" * 60)
